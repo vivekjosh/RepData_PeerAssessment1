@@ -1,25 +1,114 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Assignment1"
+author: "Vivek"
+date: "August 16, 2015"
+output: html_document
 ---
 
+#### Loading and preprocessing the data
 
-## Loading and preprocessing the data
-
-
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
+```{r,echo = TRUE}
+setwd("C:/Users/Vivek/Desktop/Anaytics/Coursera/cleaning_data")
+act<-read.csv("activity.csv",stringsAsFactors =FALSE)
+act$date <- as.Date(act$date)
+```
 
 
+#### What is mean total number of steps taken per day?
 
-## Imputing missing values
+Histogram of Total Steps
+
+```{r, echo=TRUE}
+steps<-aggregate(act$steps ~act$date, FUN = sum )
+colnames(steps)<-c("day","steps")
+hist(steps$steps,xlab="Steps",main= "Histogram of Total Steps")
+
+```
+
+Mean and Median Number of steps taken
+
+```{r, echo=TRUE}
+
+mean(steps$steps)
+median(steps$steps)
+```
+
+#### What is the average daily activity pattern?
+
+```{r, echo=TRUE}
+
+time_series<-aggregate(act$steps ~act$interval, FUN=mean)
+colnames(time_series)<-c("Interval","Avg_Steps")
+plot(time_series$Interval,time_series$Avg_Steps,type="l",xlab="Interval",ylab="Average Steps")
+```
+
+The 5-minute interval, which on average across all the days in the dataset, contains the maximum number of steps is 
+
+```{r, echo=TRUE}
+
+head(time_series[with(time_series, order(-Avg_Steps)), ],1)
+```
+
+#### Imputing missing 
+
+The total number of rows containing missing values are 2304.
+
+```{r, echo=TRUE}
+
+summary(act)
+```
+
+#### Making a new Dataset with imputed missing values
+
+For this the missing value is replaced by the mean for the 5-minute interval, for that particular observation
+
+```{r, echo=TRUE}
+
+mean_steps<-aggregate(act$steps ~act$interval, FUN=mean)
+colnames(mean_steps)<-c("interval","steps")
+steps2<-act
+steps2_null<-subset(steps2,is.na(steps2$steps))
+steps2_not_null<-subset(steps2,!is.na(steps2$steps)) 
+step2_imputed<-merge(steps2_null,mean_steps,by="interval",all.x=TRUE)
+step2_imputed$steps.x<-NULL
+colnames(step2_imputed)<-c("interval","date","steps")
+step2_imputed<-step2_imputed[,c(3,2,1)]
+steps2_final<-rbind(steps2_not_null,step2_imputed)
+```
+
+ Histogram of the total number of steps taken each day
+
+```{r, echo=TRUE}
+
+steps_total<-aggregate(steps2_final$steps ~steps2_final$date, FUN = sum )
+colnames(steps_total)<-c("day","steps")
+hist(steps_total$steps,xlab="Steps",main= "Histogram of Total Steps")
+```
+
+Mean and Median Number of steps taken in new dataset
+
+```{r, echo=TRUE}
+mean(steps_total$steps)
+median(steps_total$steps)
+```
+There is no major difference between the mean and median of original dataset with imputed dataset.
+
+#### Are there differences in activity patterns between weekdays and weekends?
+
+```{r, echo=TRUE}
+steps2_final$day <-weekdays(steps2_final$date)
+
+steps2_final$day<-ifelse(steps2_final$day =="Saturday"|steps2_final$day =="Sunday" ,"weekend","weekday")
+avgSteps <- aggregate(steps2_final$steps, 
+                      list(interval = as.numeric(as.character(steps2_final$interval)), 
+                           day = steps2_final$day),
+                      FUN = "mean")
+names(avgSteps)[3] <- "mean_steps"
+
+library(lattice)
+xyplot(avgSteps$mean_steps ~ avgSteps$interval | avgSteps$day, 
+       layout = c(1, 2), type = "l", 
+       xlab = "Interval", ylab = "Number of steps")
 
 
-
-## Are there differences in activity patterns between weekdays and weekends?
+```
